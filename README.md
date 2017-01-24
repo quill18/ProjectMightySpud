@@ -13,7 +13,7 @@ While this will be a standalone projects for simplicity and clarity, there is no
 
 ## How to Get It
 
-You can download the episode-by-episode version of the project from the [RELEASES](https://github.com/quill18/ProjectMightySpud/releases) page -- or stay synched it through normal Git processes (clone/pull/fork/etc...)
+You can download the episode-by-episode version of the project from the [RELEASES](https://github.com/quill18/ProjectMightySpud/releases) page -- or stay synced it through normal Git processes (clone/pull/fork/etc...)
 
 ## License
 
