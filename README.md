@@ -17,5 +17,5 @@ You can download the episode-by-episode version of the project from the [RELEASE
 
 ## License
 
-This code is licensed under the [MIT License](../blob/master/LICENSE). Basically, do whatever you want with it but don't blame me if it breaks. (Note that this does NOT give you the right to re-publish my tutorial videos.)
+This code is licensed under the [MIT License](LICENSE). Basically, do whatever you want with it but don't blame me if it breaks. (Note that this does NOT give you the right to re-publish my tutorial videos.)
 
