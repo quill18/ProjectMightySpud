@@ -1,6 +1,6 @@
 # ProjectMightySpud
 
-Project MightSpud is going to be a partial game setup that implements the space-to-ground-to-space movement of games like Kerbal Space Program or No Man's Sky.  During the course of the project, we will be implementing these features:
+Project MightySpud is going to be a partial game setup that implements the space-to-ground-to-space movement of games like Kerbal Space Program or No Man's Sky.  During the course of the project, we will be implementing these features:
 
 * Generating Terrain from a heightmap image. This will be a pre-existing image (topography of the actual moon), but there is no reason that the texture could not also be procedurally generated. Techniques for this will be discussed.
 * Spawning structures and other terrain features on the landscape using an additional structure image map.
