@@ -11,7 +11,7 @@ using UnityEngine;
 public class SphericalCoord 
 {
     /// <summary>
-    /// Gets or sets the latitude. 0 is north pole, 180 is south pole
+    /// Gets or sets the latitude. 0 the equator. -90 is the North Pole. +90 is the South Pole
     /// </summary>
     /// <value>The latitude.</value>
     public float Latitude { 
@@ -21,17 +21,16 @@ public class SphericalCoord
         }
         set
         {
-            _Latitude = value;
-            if(_Latitude >= 270)
+            // Deal with values that exceed +/- 360
+            _Latitude = value % 360;
+
+            // If we're above 180, then we are in the northern hemisphere
+            // and we represent that by a negative value
+            if(_Latitude > 180)
             {
-                // We are north of the equator
-                _Latitude = _Latitude - 270;
+                _Latitude = -(180 - (_Latitude - 180));
             }
-            else if(_Latitude >= 0)
-            {
-                // We are south of the equator
-                _Latitude = _Latitude += 90;
-            }
+
         }
     }
     private float _Latitude;
@@ -40,7 +39,20 @@ public class SphericalCoord
     /// Gets or sets the longitude. 0 is left edge, 360 is right edge
     /// </summary>
     /// <value>The longitude.</value>
-    public float Longitude { get; set; }
+    public float Longitude 
+    { 
+        get
+        {
+            return _Longitude;
+        }
+
+        set
+        {
+            _Longitude = value % 360;
+
+        }
+    }
+    private float _Longitude;
 
 
     /// <summary>
@@ -52,15 +64,15 @@ public class SphericalCoord
     {
         string latString = string.Format("0°");
 
-        if(Latitude < 90)
+        if(Latitude < 0)
         {
             // North
-            latString = string.Format("{0}° N", (90 - Latitude) );
+            latString = string.Format("{0}° N", (-Latitude) );
         }
-        else if(Latitude > 90)
+        else if(Latitude > 0)
         {
             // South
-            latString = string.Format("{0}° S", (Latitude - 90) );
+            latString = string.Format("{0}° S", (Latitude) );
         }
 
         string longString = string.Format("0°");

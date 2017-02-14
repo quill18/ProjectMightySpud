@@ -121,11 +121,24 @@ public class DynamicTerrain : MonoBehaviour
                 float xPos = (float)y / (float)terrainData.heightmapHeight;
 
                 // Zoom the view as defined by ViewingRectangle
-                xPos = xPos * ViewingRectangle.width  + ViewingRectangle.xMin;
-                yPos = yPos * ViewingRectangle.height + ViewingRectangle.yMin;
+                //xPos = xPos * ViewingRectangle.width  + ViewingRectangle.xMin;
+                //yPos = yPos * ViewingRectangle.height + ViewingRectangle.yMin;
+
+                // Convert xPos to Longitude degrees
+                SphericalCoord sc =  new SphericalCoord();
+                sc.Longitude = xPos * 360f - 180f;
+
+                sc.Latitude = yPos * 180f - 90f;
+
+                // Uncomment this if you want to see a Sinusoidal equal-area projection
+                // https://en.wikipedia.org/wiki/Sinusoidal_projection
+/*                if(sc.Latitude != 90 && sc.Latitude != -90)
+                    sc.Longitude *= ( 1f/ Mathf.Cos( Mathf.Deg2Rad * sc.Latitude) );
+*/
+                Vector2 uv = CoordHelper.SphericalToUV( sc );
 
                 // Get the pixel from the heightmap image texture at the appropriate position
-                Color pix = HeightMapTexture.GetPixelBilinear( xPos, yPos );
+                Color pix = HeightMapTexture.GetPixelBilinear( 1-uv.x, uv.y );
 
                 // Update the heights array
                 heights[x,y] = pix.grayscale / heightMapTextureScaling;
@@ -135,6 +148,11 @@ public class DynamicTerrain : MonoBehaviour
         // Update the terrain data based on our changed heights array
         terrainData.SetHeights(0, 0, heights);
 
+    }
+
+    Vector2 GetHeightFromMapCorrectedForProjection()
+    {
+        return Vector2.zero;
     }
 
     void BuildSplats(TerrainData terrainData)

@@ -19,8 +19,12 @@ public static class CoordHelper
 
         SphericalCoord coord = new SphericalCoord();
 
-        coord.Latitude = quatToTarget.eulerAngles.x;
-        coord.Longitude = quatToTarget.eulerAngles.y;
+        float lat = quatToTarget.eulerAngles.x;
+
+        float lon = quatToTarget.eulerAngles.y;
+
+        coord.Latitude = lat;
+        coord.Longitude = lon;
 
         return coord;
     }
@@ -29,7 +33,7 @@ public static class CoordHelper
     {
         Vector2 uv = new Vector2(
             1 - (sphereCoord.Longitude / 360f),
-            sphereCoord.Latitude / 180f
+            (sphereCoord.Latitude + 90) / 180f
         );
 
         return uv;
