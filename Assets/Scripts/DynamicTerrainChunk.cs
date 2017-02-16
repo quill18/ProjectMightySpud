@@ -12,7 +12,7 @@ public class DynamicTerrainChunk : MonoBehaviour
 {
     void Start () 
     {
-        BuildTerrain();
+        //BuildTerrain(  );
     }
 
     /// <summary>
@@ -49,6 +49,8 @@ public class DynamicTerrainChunk : MonoBehaviour
 
     void BuildTerrain()
     {
+        terrainChunkPosition = tcp;
+
         // Create Terrain and TerrainCollider components and add them to the GameObject
         Terrain terrain = gameObject.AddComponent<Terrain>();
         TerrainCollider terrainCollider = gameObject.AddComponent<TerrainCollider>();
@@ -138,11 +140,6 @@ public class DynamicTerrainChunk : MonoBehaviour
         // Update the terrain data based on our changed heights array
         terrainData.SetHeights(0, 0, heights);
 
-    }
-
-    Vector2 GetHeightFromMapCorrectedForProjection()
-    {
-        return Vector2.zero;
     }
 
     void BuildSplats(TerrainData terrainData)

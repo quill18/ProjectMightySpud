@@ -12,10 +12,17 @@ public class SphericalCoord
 {
     public SphericalCoord()
     {
+<<<<<<< HEAD
         //SphericalCoord(0,0);
     }
 
     public SphericalCoord( float lat, float lon )
+=======
+        
+    }
+
+    public SphericalCoord(float lat, float lon)
+>>>>>>> 9e350551b891129d991da87c230b397a9a5a7d47
     {
         Latitude = lat;
         Longitude = lon;

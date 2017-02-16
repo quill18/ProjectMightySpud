@@ -18,6 +18,11 @@ public class SplatData
     public float Size = 15;
 }
 
+/// <summary>
+/// Dynamic terrain master is responsible for starting from a Landing Point
+/// and spawning the 9-sliced DynamicTerrainChunk objects, as well as
+/// despawning/spawning new chunks as the player/camera moves around.
+/// </summary>
 public class DynamicTerrainMaster : MonoBehaviour 
 {
     void Start () 
