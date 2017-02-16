@@ -10,6 +10,17 @@ using UnityEngine;
 
 public class SphericalCoord 
 {
+    public SphericalCoord()
+    {
+        //SphericalCoord(0,0);
+    }
+
+    public SphericalCoord( float lat, float lon )
+    {
+        Latitude = lat;
+        Longitude = lon;
+    }
+
     /// <summary>
     /// Gets or sets the latitude. 0 the equator. -90 is the North Pole. +90 is the South Pole
     /// </summary>

@@ -29,10 +29,25 @@ public static class CoordHelper
         return coord;
     }
 
+    public static Quaternion SphericalToRotation( SphericalCoord sphereCoord)
+    {
+        return Quaternion.Euler( sphereCoord.Latitude, sphereCoord.Longitude, 0 );
+    }
+
+    public static SphericalCoord RotationToSpherical( Quaternion rotation )
+    {
+        return new SphericalCoord( rotation.eulerAngles.x, rotation.eulerAngles.y );
+    }
+
+    public static Vector2 RotationToUV( Quaternion rotation )
+    {
+        return SphericalToUV( RotationToSpherical(rotation) );
+    }
+
     public static Vector2 SphericalToUV( SphericalCoord sphereCoord )
     {
         Vector2 uv = new Vector2(
-            1 - (sphereCoord.Longitude / 360f),
+            (sphereCoord.Longitude / 360f),
             (sphereCoord.Latitude + 90) / 180f
         );
 
