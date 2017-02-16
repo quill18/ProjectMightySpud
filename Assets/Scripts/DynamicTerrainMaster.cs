@@ -49,8 +49,8 @@ public class DynamicTerrainMaster : MonoBehaviour
     float DegreesPerChunk = 10f;
     float WorldUnitsPerChunk = 1024;
 
-    int numRows = 5;
-    int numCols = 5;
+    int numRows = 3;
+    int numCols = 3;
 
     public void BuildFromLandingSpot( SphericalCoord landingSpot )
     {

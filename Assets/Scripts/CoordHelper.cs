@@ -29,7 +29,6 @@ public static class CoordHelper
         return coord;
     }
 
-<<<<<<< HEAD
     public static Quaternion SphericalToRotation( SphericalCoord sphereCoord)
     {
         return Quaternion.Euler( sphereCoord.Latitude, sphereCoord.Longitude, 0 );

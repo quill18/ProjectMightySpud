@@ -12,7 +12,7 @@ public class DynamicTerrainChunk : MonoBehaviour
 {
     void Start () 
     {
-        //BuildTerrain(  );
+        BuildTerrain(  );
     }
 
     /// <summary>
@@ -49,8 +49,6 @@ public class DynamicTerrainChunk : MonoBehaviour
 
     void BuildTerrain()
     {
-        terrainChunkPosition = tcp;
-
         // Create Terrain and TerrainCollider components and add them to the GameObject
         Terrain terrain = gameObject.AddComponent<Terrain>();
         TerrainCollider terrainCollider = gameObject.AddComponent<TerrainCollider>();
