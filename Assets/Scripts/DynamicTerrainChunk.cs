@@ -1,5 +1,5 @@
 ﻿//-----------------------------------------------------------------------
-// <copyright file="DynamicTerrain.cs" company="Quill18 Productions">
+// <copyright file="DynamicTerrainChunk.cs" company="Quill18 Productions">
 //     Copyright (c) Quill18 Productions. All rights reserved.
 // </copyright>
 //-----------------------------------------------------------------------
@@ -10,11 +10,6 @@ using UnityEngine;
 
 public class DynamicTerrainChunk : MonoBehaviour 
 {
-    void Start () 
-    {
-        BuildTerrain(  );
-    }
-
     /// <summary>
     /// The image texture used to populate the height map.
     /// Colour data is discarded: Only greyscale matters.
@@ -30,6 +25,8 @@ public class DynamicTerrainChunk : MonoBehaviour
     /// The array of splat data used to paint the terrain
     /// </summary>
     public SplatData[] Splats;
+
+    public StructureColor[] StructureColors;
 
     /// <summary>
     /// We're going to dampen the heightmap by this amount. Larger values means a flatter/smoother map.
@@ -47,14 +44,17 @@ public class DynamicTerrainChunk : MonoBehaviour
 
     public float WorldUnitsPerChunk;
 
-    void BuildTerrain()
+    Terrain terrain;
+    TerrainData terrainData;
+
+    public void BuildTerrain(  )
     {
         // Create Terrain and TerrainCollider components and add them to the GameObject
-        Terrain terrain = gameObject.AddComponent<Terrain>();
+        terrain = gameObject.AddComponent<Terrain>();
         TerrainCollider terrainCollider = gameObject.AddComponent<TerrainCollider>();
 
         // Everything about the terrain is actually stored in a TerrainData
-        TerrainData terrainData = new TerrainData();
+        terrainData = new TerrainData();
 
         // Create the landscape
         BuildTerrainData(terrainData);
@@ -69,8 +69,15 @@ public class DynamicTerrainChunk : MonoBehaviour
         terrain.terrainData = terrainData;
         terrainCollider.terrainData = terrainData;
 
+
         // NOTE: If you make any changes to the terrain data after
         //       this, you should call terrain.Flush()
+
+
+        // Now make the structures
+
+        BuildStructures();
+
     }
 
     void BuildTerrainData(TerrainData terrainData)
@@ -118,6 +125,10 @@ public class DynamicTerrainChunk : MonoBehaviour
                 float xPos = (float)x / (float)terrainData.heightmapWidth;
                 float yPos = (float)y / (float)terrainData.heightmapHeight;
 
+                // This converts our chunk position to a latitude/longitude,
+                // which we can then use to get UV coordinates from the heightmap
+                // FIXME: I think this is doing a pincushion effect
+                //    Someone smarter than me will have to figure this out.
                 Quaternion pointRotation = ChunkRotation *
                     Quaternion.Euler( 
                         xPos * DegreesPerChunk - halfDegreesPerChunk,
@@ -184,8 +195,89 @@ public class DynamicTerrainChunk : MonoBehaviour
         terrainData.SetAlphamaps(0, 0, splatMaps);
     }
 
+    public void SetNeighbors( DynamicTerrainChunk left, DynamicTerrainChunk top, DynamicTerrainChunk right, DynamicTerrainChunk bottom )
+    {
+        // TODO: Fix the seams between chunks
 
 
 
+
+        Terrain t = GetComponent<Terrain>();
+
+        Terrain leftTerrain = left == null ? null : left.terrain;
+        Terrain topTerrain = top == null ? null : top.terrain;
+        Terrain rightTerrain = right == null ? null : right.terrain;
+        Terrain bottomTerrain = bottom == null ? null : bottom.terrain;
+
+        // Hint to the terrain engine about how to improve LOD calculations
+        t.SetNeighbors( leftTerrain, topTerrain, rightTerrain, bottomTerrain );
+        t.Flush();
+    }
+
+    void BuildStructures()
+    {
+        // Loop through each pixel of the structures map
+        // if we find pixels that aren't transparent (or whatever our criteria is)
+        // then we will spawn a structure based on the color code.
+
+        Color32[] pixels = StructureMapTexture.GetPixels32();
+
+        Color32 c32 = new Color32(255, 0, 0, 255);
+
+
+        for (int x = 0; x < StructureMapTexture.width; x++)
+        {
+            for (int y = 0; y < StructureMapTexture.height; y++)
+            {
+                Color32 p = pixels[x + y * StructureMapTexture.width];
+                if( p.a < 128 )
+                {
+                    // transparent pixel, ignore.
+                    continue;
+                }
+
+                Debug.Log("Not transparent!: " + p.ToString());
+
+                foreach(StructureColor sc in StructureColors)
+                {
+                    if(sc.Color.r == p.r && sc.Color.g == p.g && sc.Color.b == p.b)
+                    {
+                        Debug.Log("Color match!");
+                        // What is the position of the building?
+                        Quaternion quaLatLon = CoordHelper.UVToRotation( new Vector2( (float)x/StructureMapTexture.width, (float)y/StructureMapTexture.height ) );
+
+                        // Are we within DegreesPerChunk/2 of the center of the chunk,
+                        // along both direction?
+
+                        float xDiff = quaLatLon.eulerAngles.x - ChunkRotation.eulerAngles.x;
+                        if(xDiff > 180)
+                        {
+                            xDiff = xDiff - 360;
+                        }
+                        float yDiff = quaLatLon.eulerAngles.y - ChunkRotation.eulerAngles.y;
+                        if(yDiff > 180)
+                        {
+                            yDiff = yDiff - 360;
+                        }
+
+                        if( Mathf.Abs(xDiff) > DegreesPerChunk/2f || Mathf.Abs(yDiff) > DegreesPerChunk/2f )
+                        {
+                            // Not in our chunk!
+                            continue;
+                        }
+
+                        // Spawn the correct building.
+                        Vector3 pos = Vector3.zero;
+                        Quaternion rot = Quaternion.identity;
+                        GameObject theStructure = (GameObject)Instantiate(sc.StructurePrefab, pos, rot, this.transform);
+
+                        // Stop looping through structure colors
+                        break; // foreach
+                    }
+                }
+            }
+                
+        }
+    }
 
 }

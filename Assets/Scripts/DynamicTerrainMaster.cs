@@ -18,6 +18,15 @@ public class SplatData
     public float Size = 15;
 }
 
+[System.Serializable]
+public class StructureColor
+{
+    public Color32 Color;
+    public GameObject StructurePrefab;
+}
+
+
+
 /// <summary>
 /// Dynamic terrain master is responsible for starting from a Landing Point
 /// and spawning the 9-sliced DynamicTerrainChunk objects, as well as
@@ -28,6 +37,14 @@ public class DynamicTerrainMaster : MonoBehaviour
     void Start () 
     {
         BuildFromLandingSpot( new SphericalCoord( 0, 0 ) );
+    }
+
+    void Update()
+    {
+        if(Input.GetKeyDown(KeyCode.Space))
+        {
+            TESTING_SlideChunkArray();
+        }
     }
 
     /// <summary>
@@ -46,44 +63,130 @@ public class DynamicTerrainMaster : MonoBehaviour
     /// </summary>
     public SplatData[] Splats;
 
-    float DegreesPerChunk = 10f;
+    public StructureColor[] StructureColors;
+
+    float DegreesPerChunk = 5f;
     float WorldUnitsPerChunk = 1024;
 
     int numRows = 3;
     int numCols = 3;
 
+    DynamicTerrainChunk[,] terrainChunks;
+
     public void BuildFromLandingSpot( SphericalCoord landingSpot )
     {
+        terrainChunks = new DynamicTerrainChunk[numCols,numRows];
+
+        // Create the center chunk.
+
+        Quaternion rotation = CoordHelper.SphericalToRotation(landingSpot);
+
+        //rotation *= Quaternion.Euler( 0, 0, 45 );
+
+        Vector3 position = new Vector3(
+            (-WorldUnitsPerChunk/2f),
+            0,
+            (-WorldUnitsPerChunk/2f)
+        );
+
+        // FIXME: Hardcoded?
+        terrainChunks[1, 1] = BuildChunk( rotation, position );
+
+        BuildChunkArray();
+
+        //RebuildChunks();
+    }
+
+    void BuildChunkArray()
+    {
+        if( terrainChunks[1, 1] == null )
+        {
+            Debug.LogError("No middle chunk!");
+            return;
+        }
+
         for (int x = 0; x < numCols; x++)
         {
             for (int y = 0; y < numRows; y++)
             {
-                Quaternion rotation = CoordHelper.SphericalToRotation(landingSpot);
+                if(terrainChunks[x,y] == null)
+                {
+                    float xDir = x-1;
+                    float yDir = y-1;
+                    // Build the missing chunk
+                    DynamicTerrainChunk root = terrainChunks[1,1];
 
-                rotation = rotation * Quaternion.Euler(
-                    (-DegreesPerChunk * numRows/2f) + (y*DegreesPerChunk),
-                    (-DegreesPerChunk * numCols/2f) + (x*DegreesPerChunk),
-                    0
+                    Quaternion rotation = root.ChunkRotation;
+                    rotation *= Quaternion.Euler( 
+                        DegreesPerChunk * yDir,
+                        DegreesPerChunk * xDir,
+                        0
+                    );
+
+                    Vector3 position = root.transform.position;
+                    position += new Vector3(
+                        WorldUnitsPerChunk * xDir,
+                        0,
+                        WorldUnitsPerChunk * yDir
+                    );
+
+                    terrainChunks[x,y] = BuildChunk( rotation, position );
+                }
+            }
+        }
+    }
+
+    void TESTING_SlideChunkArray()
+    {
+        // Move south by one row of chunks
+
+        for (int x = 0; x < numCols; x++)
+        {
+            // Top row, gets set to the values of the middle
+            Destroy( terrainChunks[x, 2].gameObject );
+            terrainChunks[x, 2] = terrainChunks[x, 1];
+
+            // The middle gets set to the values of the bottom
+            terrainChunks[x, 1] = terrainChunks[x, 0];
+
+            // The bottom gets nulled out
+            terrainChunks[x, 0] = null;
+
+        }
+        // Then we call BuildChunkArray() -- which will create a new bottom relative to the new middle
+        BuildChunkArray();
+    }
+
+
+    void RebuildChunks()
+    {
+        // This function (at first) will tell each chunk
+        // who its neighbours are.
+
+        // Loop through all of our existing chunks.
+        for (int x = 0; x < numCols; x++)
+        {
+            for (int y = 0; y < numRows; y++)
+            {
+                DynamicTerrainChunk left   = (x > 0)         ? terrainChunks[x-1, y  ] : null;
+                DynamicTerrainChunk bottom    = (y > 0)      ? terrainChunks[x  , y-1] : null;
+                DynamicTerrainChunk right  = (x < numCols-1) ? terrainChunks[x+1, y  ] : null;
+                DynamicTerrainChunk top = (y < numRows-1)    ? terrainChunks[x  , y+1] : null;
+
+                terrainChunks[x,y].SetNeighbors( 
+                    left, top, right, bottom
                 );
-
-                Vector3 position = new Vector3(
-                    (-WorldUnitsPerChunk * numCols/2f) + (x*WorldUnitsPerChunk),
-                    0,
-                    (-WorldUnitsPerChunk * numRows/2f) + (y*WorldUnitsPerChunk)
-                );
-
-                BuildChunk( rotation, position );
 
             }
         }
-
     }
 
-    void BuildChunk( Quaternion rotation, Vector3 position )
+    DynamicTerrainChunk BuildChunk( Quaternion rotation, Vector3 position )
     {
 
         GameObject go = new GameObject();
         go.transform.position = position;
+        go.name = position.ToString();
 
         DynamicTerrainChunk dtc = go.AddComponent<DynamicTerrainChunk>();
         dtc.HeightMapTexture = this.HeightMapTexture;
@@ -93,6 +196,11 @@ public class DynamicTerrainMaster : MonoBehaviour
         dtc.ChunkRotation = rotation;
         dtc.DegreesPerChunk = DegreesPerChunk;
         dtc.WorldUnitsPerChunk = WorldUnitsPerChunk;
+        dtc.StructureColors = StructureColors;
+
+        dtc.BuildTerrain();
+
+        return dtc;
     }
 
 }

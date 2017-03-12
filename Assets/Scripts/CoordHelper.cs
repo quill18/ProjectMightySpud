@@ -54,4 +54,9 @@ public static class CoordHelper
         return uv;
     }
 
+    public static Quaternion UVToRotation( Vector2 uv )
+    {
+        return Quaternion.Euler( (uv.y - 0.5f) * 180f, 360f * uv.x , 0 );
+    }
+
 }
