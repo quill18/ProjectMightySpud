@@ -34,9 +34,11 @@ public class StructureColor
 /// </summary>
 public class DynamicTerrainMaster : MonoBehaviour 
 {
+
+    bool rotTest = true;
     void Start () 
     {
-        BuildFromLandingSpot( new SphericalCoord( 0, 0 ) );
+        BuildFromLandingSpot( new SphericalCoord( rotTest ? -4 : 0, 0 ) );
     }
 
     void Update()
@@ -81,7 +83,8 @@ public class DynamicTerrainMaster : MonoBehaviour
 
         Quaternion rotation = CoordHelper.SphericalToRotation(landingSpot);
 
-        //rotation *= Quaternion.Euler( 0, 0, 45 );
+        if(rotTest)
+            rotation *= Quaternion.Euler( 0, 0, 45 );
 
         Vector3 position = new Vector3(
             (-WorldUnitsPerChunk/2f),
@@ -186,7 +189,7 @@ public class DynamicTerrainMaster : MonoBehaviour
 
         GameObject go = new GameObject();
         go.transform.position = position;
-        go.name = position.ToString();
+        go.name = rotation.eulerAngles.ToString(); //position.ToString();
 
         DynamicTerrainChunk dtc = go.AddComponent<DynamicTerrainChunk>();
         dtc.HeightMapTexture = this.HeightMapTexture;

@@ -220,6 +220,10 @@ public class DynamicTerrainChunk : MonoBehaviour
         // if we find pixels that aren't transparent (or whatever our criteria is)
         // then we will spawn a structure based on the color code.
 
+        // IDEALLY -- We don't want to have to parse the building map for every chunk.
+        // It would be nice instead if we did this once and just cached where all the
+        // buildings should be. -- This is very easy.
+
         Color32[] pixels = StructureMapTexture.GetPixels32();
 
         Color32 c32 = new Color32(255, 0, 0, 255);
@@ -244,32 +248,31 @@ public class DynamicTerrainChunk : MonoBehaviour
                     {
                         Debug.Log("Color match!");
                         // What is the position of the building?
-                        Quaternion quaLatLon = CoordHelper.UVToRotation( new Vector2( (float)x/StructureMapTexture.width, (float)y/StructureMapTexture.height ) );
+                        SphericalCoord buildingLatLon = CoordHelper.UVToSpherical( new Vector2((float)x/StructureMapTexture.width, (float)y/StructureMapTexture.height) );
 
-                        // Are we within DegreesPerChunk/2 of the center of the chunk,
-                        // along both direction?
 
-                        float xDiff = quaLatLon.eulerAngles.x - ChunkRotation.eulerAngles.x;
-                        if(xDiff > 180)
-                        {
-                            xDiff = xDiff - 360;
-                        }
-                        float yDiff = quaLatLon.eulerAngles.y - ChunkRotation.eulerAngles.y;
-                        if(yDiff > 180)
-                        {
-                            yDiff = yDiff - 360;
-                        }
+                        Vector3 localPosition = SphericalToLocalPosition( buildingLatLon );
 
-                        if( Mathf.Abs(xDiff) > DegreesPerChunk/2f || Mathf.Abs(yDiff) > DegreesPerChunk/2f )
+                        if(localPosition.x < 0 || localPosition.x > WorldUnitsPerChunk || localPosition.z < 0 || localPosition.z > WorldUnitsPerChunk)
                         {
                             // Not in our chunk!
                             continue;
+
                         }
 
+
                         // Spawn the correct building.
-                        Vector3 pos = Vector3.zero;
-                        Quaternion rot = Quaternion.identity;
-                        GameObject theStructure = (GameObject)Instantiate(sc.StructurePrefab, pos, rot, this.transform);
+                        Vector3 globalPosition = localPosition + this.transform.position;
+
+                        // Fix the building's height
+                        float heightAtGlobalPosition = terrain.SampleHeight( globalPosition );
+                        globalPosition.y = heightAtGlobalPosition;
+
+                        // Our rotation is going to be a factor of our longitude and the Z rotation of this chunk
+                        // FIXME: Test me -- especially near the polls and with different chunk rotations
+                        Quaternion rot = Quaternion.Euler( 0,  ChunkRotation.eulerAngles.z + Mathf.Sin(Mathf.Deg2Rad * buildingLatLon.Latitude)*buildingLatLon.Longitude, 0 );
+
+                        GameObject theStructure = (GameObject)Instantiate(sc.StructurePrefab, globalPosition, rot, this.transform);
 
                         // Stop looping through structure colors
                         break; // foreach
@@ -278,6 +281,45 @@ public class DynamicTerrainChunk : MonoBehaviour
             }
                 
         }
+    }
+
+    /// <summary>
+    /// Converts a SphericalCoord (Lat/Lon) into a Vector3 that represents
+    /// the position of the Lat/Lon on this terrain chunk
+    /// </summary>
+    /// <param name="sc">Sc.</param>
+    Vector3 SphericalToLocalPosition( SphericalCoord sc )
+    {
+        Debug.Log( gameObject.name + " -- " + sc.ToString());
+
+        Quaternion buildingQat = CoordHelper.SphericalToRotation(sc);
+
+        float xAngleDiff = buildingQat.eulerAngles.x - ChunkRotation.eulerAngles.x;
+
+        while(xAngleDiff < -360)
+            xAngleDiff += 360;
+        while(xAngleDiff > 360)
+            xAngleDiff -= 360;
+
+        float yAngleDiff = buildingQat.eulerAngles.y - ChunkRotation.eulerAngles.y;
+
+        Debug.Log( gameObject.name + " -- xAngleDiff: " + xAngleDiff);
+        Debug.Log( gameObject.name + " -- yAngleDiff: " + yAngleDiff);
+
+        Vector3 distFromCenter = new Vector3(
+            ((yAngleDiff / DegreesPerChunk)) * WorldUnitsPerChunk,
+            0,  // HEIGHT of building
+            ((xAngleDiff / DegreesPerChunk)) * WorldUnitsPerChunk
+        );
+
+        // Rotate the vector based on chunk's rotation
+        // FIXME:   I AM WRONG HERE. MAKE MATH MORE BETTER PLEASE
+        // Do we need to incorporate longitude? I think we do.
+        distFromCenter = Quaternion.Euler(0, -ChunkRotation.eulerAngles.z, 0) * distFromCenter;
+
+        // Now move the vector's origin to the bottom-left corner and return that
+
+        return distFromCenter + new Vector3( WorldUnitsPerChunk/2, 0, WorldUnitsPerChunk/2 );
     }
 
 }
