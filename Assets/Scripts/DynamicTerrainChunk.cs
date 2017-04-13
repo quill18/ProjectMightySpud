@@ -86,12 +86,37 @@ public class DynamicTerrainChunk : MonoBehaviour
 
     }
 
+    // Example helper function to help manage co-routine yields
+    // to balance between terrain generation speed and program responsiveness.
+    System.Diagnostics.Stopwatch coroutineSW;
+    float coroutineLimit = 0.033f; // Never slower than 30fps while genning terrain.
+    bool CoRoutineShouldPause()
+    {
+        if(coroutineSW == null)
+        {
+            coroutineSW = new System.Diagnostics.Stopwatch();
+            coroutineSW.Start();
+            return false;
+        }
+
+        if(coroutineSW.ElapsedMilliseconds > coroutineLimit)
+        {
+            coroutineSW.Reset();
+            coroutineSW.Start();
+            return true;
+        }
+
+        return false;
+    }
+
     void BuildTerrainData(TerrainData terrainData)
     {
         // Define the size of the arrays that Unity's terrain will
         // use internally to represent the terrain. Bigger numbers
         // mean more fine details.
 
+        //if(CoRoutineShouldPause())
+        //    yield return null;
 
         // "Heightmap Resolution": "Pixel resolution of the terrain’s heightmap (should be a power of two plus one, eg, 513 = 512 + 1)."
         // AFAIK, this defines the size of the 2-dimensional array that holds the information about the terrain (i.e. terrainData.GetHeights())
@@ -151,6 +176,7 @@ public class DynamicTerrainChunk : MonoBehaviour
                         0
                     );
 
+
                 Vector2 uv = CoordHelper.RotationToUV( pointRotation );
 
                 // Get the pixel from the heightmap image texture at the appropriate position
@@ -164,6 +190,30 @@ public class DynamicTerrainChunk : MonoBehaviour
         // Update the terrain data based on our changed heights array
         terrainData.SetHeights(0, 0, heights);
 
+    }
+
+    public SphericalCoord WorldToSpherical( Vector3 worldPosition )
+    {
+        // WARNING: This will be weird/wrong if you pass coordinates
+        // outside the bounds of this terrain
+        return LocalToSpherical(worldPosition - this.transform.position);
+    }
+
+
+    public SphericalCoord LocalToSpherical( Vector3 localPosition )
+    {
+        // We need to know our 0..1
+        float xPos = localPosition.x / terrainData.size.x;
+        float yPos = localPosition.z / terrainData.size.z;  // NOTE: Z!
+
+        Quaternion pointRotation = ChunkRotation *
+            Quaternion.Euler( 
+                xPos * DegreesPerChunk - (DegreesPerChunk/2f),
+                yPos * DegreesPerChunk - (DegreesPerChunk/2f),
+                0
+            );
+
+        return CoordHelper.RotationToSpherical(pointRotation);
     }
 
     void BuildSplats(TerrainData terrainData)
@@ -223,10 +273,6 @@ public class DynamicTerrainChunk : MonoBehaviour
     public void SetNeighbors( DynamicTerrainChunk left, DynamicTerrainChunk top, DynamicTerrainChunk right, DynamicTerrainChunk bottom )
     {
         // TODO: Fix the seams between chunks
-
-
-
-
         Terrain t = GetComponent<Terrain>();
 
         Terrain leftTerrain = left == null ? null : left.terrain;
@@ -259,7 +305,6 @@ public class DynamicTerrainChunk : MonoBehaviour
         int w = StructureMapTexture.width;
         int h = StructureMapTexture.height;
 
-
         for (int x = 0; x < w; x++)
         {
             for (int y = 0; y < h; y++)
@@ -279,7 +324,7 @@ public class DynamicTerrainChunk : MonoBehaviour
                     {
                         //Debug.Log("Color match!");
                         // What is the position of the building?
-                        SphericalCoord buildingLatLon = CoordHelper.UVToSpherical( new Vector2((float)x/w, (float)y/h) );
+                        SphericalCoord buildingLatLon = CoordHelper.UVToSpherical( new Vector2((float)x/w, (float)(y)/h) );
 
 
                         Vector3 localPosition = SphericalToLocalPosition( buildingLatLon );

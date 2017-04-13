@@ -38,11 +38,7 @@ public class DynamicTerrainMaster : MonoBehaviour
     bool rotTest = false;
     void Start () 
     {
-        System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
-        sw.Start();
-        BuildFromLandingSpot( new SphericalCoord( rotTest ? -4 : 0, 0 ) );
-        sw.Stop();
-        Debug.Log("Terrain generation time: " + (sw.ElapsedMilliseconds/1000f));
+        //BuildFromLandingSpot( new SphericalCoord( rotTest ? -4 : 0, 0 ) );
     }
 
     void Update()
@@ -81,6 +77,9 @@ public class DynamicTerrainMaster : MonoBehaviour
 
     public void BuildFromLandingSpot( SphericalCoord landingSpot )
     {
+        System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
+        sw.Start();
+
         terrainChunks = new DynamicTerrainChunk[numCols,numRows];
 
         // Create the center chunk.
@@ -102,6 +101,8 @@ public class DynamicTerrainMaster : MonoBehaviour
         BuildChunkArray();
 
         //RebuildChunks();
+        sw.Stop();
+        Debug.Log("Terrain generation time: " + (sw.ElapsedMilliseconds/1000f));
     }
 
     void BuildChunkArray()
@@ -208,6 +209,29 @@ public class DynamicTerrainMaster : MonoBehaviour
         dtc.BuildTerrain();
 
         return dtc;
+    }
+
+
+    public SphericalCoord WorldToSpherical( Vector3 worldPosition )
+    {
+        // FIXME: Do a raycast to determine which terrain chunk we are under
+
+        // We are just going to fake it that we're on the middle chunk.
+
+        return terrainChunks[1,1].WorldToSpherical(worldPosition);
+    } 
+
+    public void DestroyChunks()
+    {
+        // TODO: Destroy gameobjects, clear array, etc...
+
+        for (int x = 0; x < 3; x++)
+        {
+            for (int y = 0; y < 3; y++)
+            {
+                Destroy(terrainChunks[x,y].gameObject);
+            }
+        }
     }
 
 }

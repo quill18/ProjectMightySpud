@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
+[ExecuteInEditMode]
 public class UICoordinateDisplay : MonoBehaviour 
 {
     void Start () 
@@ -19,6 +20,9 @@ public class UICoordinateDisplay : MonoBehaviour
     private Text text;
 
     public Transform TargetObject;
+
+    // TODO: Implement a system whereby "ParentObject" gets set to
+    // whatever planet/moon/etc... you are actually closest to.
     public Transform ParentObject;
 
     void Update () 

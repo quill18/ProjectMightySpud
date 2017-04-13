@@ -103,5 +103,6 @@ public class SphericalCoord
 
 
         return string.Format("{0}, {1}", latString, longString);
+        //return string.Format("{0}, {1}", Latitude, Longitude);
     }
 }

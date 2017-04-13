@@ -15,13 +15,19 @@ public static class CoordHelper
     {
         Vector3 dirToTarget = targetPos - parentPos;
 
+        if( dirToTarget.sqrMagnitude == 0)
+        {
+            // Parent and target is the same, so force a 0/0 coord
+            return new SphericalCoord(0, 0);
+        }
+
         Quaternion quatToTarget = Quaternion.LookRotation( dirToTarget );
 
         SphericalCoord coord = new SphericalCoord();
 
         float lat = quatToTarget.eulerAngles.x;
 
-        float lon = quatToTarget.eulerAngles.y;
+        float lon = 360-quatToTarget.eulerAngles.y;
 
         coord.Latitude = lat;
         coord.Longitude = lon;
@@ -29,9 +35,9 @@ public static class CoordHelper
         return coord;
     }
 
-    public static Quaternion SphericalToRotation( SphericalCoord sphereCoord)
+    public static Quaternion SphericalToRotation( SphericalCoord sphereCoord )
     {
-        return Quaternion.Euler( sphereCoord.Latitude, sphereCoord.Longitude, 0 );
+        return Quaternion.Euler( -sphereCoord.Latitude, sphereCoord.Longitude, 0 );
     }
 
     public static SphericalCoord RotationToSpherical( Quaternion rotation )
@@ -56,12 +62,12 @@ public static class CoordHelper
 
     public static SphericalCoord UVToSpherical( Vector2 uv )
     {
-        return new SphericalCoord( (uv.y - 0.5f) * 180f, 360f * uv.x );
+        return new SphericalCoord( -(uv.y - 0.5f) * 180f, 360f * uv.x );
     }
 
     public static Quaternion UVToRotation( Vector2 uv )
     {
-        return Quaternion.Euler( (uv.y - 0.5f) * 180f, 360f * uv.x , 0 );
+        return Quaternion.Euler( -(uv.y - 0.5f) * 180f, 360f * uv.x , 0 );
     }
 
 }
