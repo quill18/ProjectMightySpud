@@ -47,6 +47,11 @@ public class DynamicTerrainChunk : MonoBehaviour
     Terrain terrain;
     TerrainData terrainData;
 
+    /// <summary>
+    /// The height of the tallest possible peak in our terrain
+    /// </summary>
+    public float TerrainHeight = 512;
+
     public void BuildTerrain(  )
     {
         // Create Terrain and TerrainCollider components and add them to the GameObject
@@ -62,9 +67,6 @@ public class DynamicTerrainChunk : MonoBehaviour
         // Define the "Splats" (terrain textures)
         BuildSplats(terrainData);
 
-        // Apply the splats based on cliffiness
-        PaintCliffs(terrainData);
-
         // Apply the data to the terrain and collider
         terrain.terrainData = terrainData;
         terrainCollider.terrainData = terrainData;
@@ -77,6 +79,10 @@ public class DynamicTerrainChunk : MonoBehaviour
         // Now make the structures
 
         BuildStructures();
+
+        // Apply the splats based on cliffiness
+        PaintCliffs(terrainData);
+
 
     }
 
@@ -104,7 +110,7 @@ public class DynamicTerrainChunk : MonoBehaviour
 
         // Set the Unity worldspace size of the terrain AFTER you set the resolution.
         // This effectively just sets terrainData.heightmapScale for you, depending on the value of terrainData.heightmapResolution
-        terrainData.size = new Vector3( WorldUnitsPerChunk, 512 , WorldUnitsPerChunk );
+        terrainData.size = new Vector3( WorldUnitsPerChunk, TerrainHeight , WorldUnitsPerChunk );
 
         // Get the 2-dimensional array of floats that defines the actual height data for the terrain.
         // Each float has a value from 0..1, where a value of 1 means the maximum height of the terrain as defined by terrainData.size.y
@@ -115,15 +121,24 @@ public class DynamicTerrainChunk : MonoBehaviour
 
         float halfDegreesPerChunk = DegreesPerChunk / 2f;
 
+        // Caching these dimensions and...
+        int w = terrainData.heightmapWidth;
+        int h = terrainData.heightmapHeight;
+
+        // Replacing loop divisions with mults cuts this function by about 10%
+        //  -- Shout out to Karl Goodloe
+        float widthAdjust = 1f / (w-1f);
+        float heightAdjust = 1f / (h-1f);
+
         // Loop through each point in the terrainData heightmap.
-        for (int x = 0; x < terrainData.heightmapWidth; x++)
+        for (int x = 0; x < w; x++)
         {
-            for (int y = 0; y < terrainData.heightmapHeight; y++)
+            for (int y = 0; y < h; y++)
             {
                 // Normalize x and y to a value from 0..1
                 // NOTE: We are INVERTING the x and y because internally Unity does this
-                float xPos = (float)x / (float)terrainData.heightmapWidth;
-                float yPos = (float)y / (float)terrainData.heightmapHeight;
+                float xPos = (float)x * widthAdjust;
+                float yPos = (float)y * heightAdjust;
 
                 // This converts our chunk position to a latitude/longitude,
                 // which we can then use to get UV coordinates from the heightmap
@@ -171,20 +186,30 @@ public class DynamicTerrainChunk : MonoBehaviour
         //     splatMaps[ x, y, splatTextureID ] = (opacity from 0..1)
         float[,,] splatMaps = terrainData.GetAlphamaps(0, 0, terrainData.alphamapWidth, terrainData.alphamapHeight);
 
+        // Caching these dimensions and...
+        int w = terrainData.alphamapWidth;
+        int h = terrainData.alphamapHeight;
+
+        // Replacing loop divisions with mults cuts this function by about 10%
+        //  -- Shout out to Karl Goodloe
+        float widthAdjust =  1f / (w-1f);
+        float heightAdjust = 1f / (h-1f);
+        float angleAdjust =  1f / 90f;
+
         // Loop through each pixel in the alpha maps
-        for (int aX = 0; aX < terrainData.alphamapWidth; aX++)
+        for (int aX = 0; aX < w; aX++)
         {
-            for (int aY = 0; aY < terrainData.alphamapHeight; aY++)
+            for (int aY = 0; aY < h; aY++)
             {
                 // Normal to 0..1
-                float x = (float)aX / terrainData.alphamapWidth;
-                float y = (float)aY / terrainData.alphamapHeight;
+                float x = (float)aX * widthAdjust;
+                float y = (float)aY * heightAdjust;
 
                 // Find the steepness of the terrain at this point
                 float angle = terrainData.GetSteepness( y, x ); // NOTE: x and y are flipped
 
                 // 0 is "flat ground", 1 is "cliff ground"
-                float cliffiness = angle / 90.0f;
+                float cliffiness = angle * angleAdjust;
 
                 splatMaps[aX, aY, 0] = 1 - cliffiness; // Ground texture is inverse of cliffiness
                 splatMaps[aX, aY, 1] =     cliffiness; // Cliff texture is cliffiness
@@ -228,27 +253,33 @@ public class DynamicTerrainChunk : MonoBehaviour
 
         Color32 c32 = new Color32(255, 0, 0, 255);
 
+        // Holy crap, it turns out that these .width and .height calls are SUUUUUUUUUPER expensive.
+        // I cut my ENTIRE terrain-generation time in half by caching these.
+        //  -- quill18
+        int w = StructureMapTexture.width;
+        int h = StructureMapTexture.height;
 
-        for (int x = 0; x < StructureMapTexture.width; x++)
+
+        for (int x = 0; x < w; x++)
         {
-            for (int y = 0; y < StructureMapTexture.height; y++)
+            for (int y = 0; y < h; y++)
             {
-                Color32 p = pixels[x + y * StructureMapTexture.width];
+                Color32 p = pixels[x + y * w];
                 if( p.a < 128 )
                 {
                     // transparent pixel, ignore.
                     continue;
                 }
 
-                Debug.Log("Not transparent!: " + p.ToString());
+                //Debug.Log("Not transparent!: " + p.ToString());
 
                 foreach(StructureColor sc in StructureColors)
                 {
                     if(sc.Color.r == p.r && sc.Color.g == p.g && sc.Color.b == p.b)
                     {
-                        Debug.Log("Color match!");
+                        //Debug.Log("Color match!");
                         // What is the position of the building?
-                        SphericalCoord buildingLatLon = CoordHelper.UVToSpherical( new Vector2((float)x/StructureMapTexture.width, (float)y/StructureMapTexture.height) );
+                        SphericalCoord buildingLatLon = CoordHelper.UVToSpherical( new Vector2((float)x/w, (float)y/h) );
 
 
                         Vector3 localPosition = SphericalToLocalPosition( buildingLatLon );
@@ -269,10 +300,12 @@ public class DynamicTerrainChunk : MonoBehaviour
                         globalPosition.y = heightAtGlobalPosition;
 
                         // Our rotation is going to be a factor of our longitude and the Z rotation of this chunk
-                        // FIXME: Test me -- especially near the polls and with different chunk rotations
+                        // FIXME: Test me -- especially near the poles and with different chunk rotations
                         Quaternion rot = Quaternion.Euler( 0,  ChunkRotation.eulerAngles.z + Mathf.Sin(Mathf.Deg2Rad * buildingLatLon.Latitude)*buildingLatLon.Longitude, 0 );
 
                         GameObject theStructure = (GameObject)Instantiate(sc.StructurePrefab, globalPosition, rot, this.transform);
+
+                        SmoothTerrainUnderStructure( theStructure );
 
                         // Stop looping through structure colors
                         break; // foreach
@@ -290,7 +323,7 @@ public class DynamicTerrainChunk : MonoBehaviour
     /// <param name="sc">Sc.</param>
     Vector3 SphericalToLocalPosition( SphericalCoord sc )
     {
-        Debug.Log( gameObject.name + " -- " + sc.ToString());
+        //Debug.Log( gameObject.name + " -- " + sc.ToString());
 
         Quaternion buildingQat = CoordHelper.SphericalToRotation(sc);
 
@@ -303,8 +336,8 @@ public class DynamicTerrainChunk : MonoBehaviour
 
         float yAngleDiff = buildingQat.eulerAngles.y - ChunkRotation.eulerAngles.y;
 
-        Debug.Log( gameObject.name + " -- xAngleDiff: " + xAngleDiff);
-        Debug.Log( gameObject.name + " -- yAngleDiff: " + yAngleDiff);
+        //Debug.Log( gameObject.name + " -- xAngleDiff: " + xAngleDiff);
+        //Debug.Log( gameObject.name + " -- yAngleDiff: " + yAngleDiff);
 
         Vector3 distFromCenter = new Vector3(
             ((yAngleDiff / DegreesPerChunk)) * WorldUnitsPerChunk,
@@ -315,6 +348,8 @@ public class DynamicTerrainChunk : MonoBehaviour
         // Rotate the vector based on chunk's rotation
         // FIXME:   I AM WRONG HERE. MAKE MATH MORE BETTER PLEASE
         // Do we need to incorporate longitude? I think we do.
+        //   I think we need to check the different in longitude between the center of the
+        //   terrain chunk and where the building is.
         distFromCenter = Quaternion.Euler(0, -ChunkRotation.eulerAngles.z, 0) * distFromCenter;
 
         // Now move the vector's origin to the bottom-left corner and return that
@@ -322,4 +357,69 @@ public class DynamicTerrainChunk : MonoBehaviour
         return distFromCenter + new Vector3( WorldUnitsPerChunk/2, 0, WorldUnitsPerChunk/2 );
     }
 
+    void SmoothTerrainUnderStructure( GameObject structureGO )
+    {
+
+        // We need to figure out the bounds for this structure.
+
+
+        Collider[] cols = structureGO.GetComponentsInChildren<Collider>();
+        if(cols.Length == 0)
+        {
+            Debug.LogError("SmoothTerrainUnderStructure - Structure has no colliders?");
+            return;
+        }
+
+        Bounds structureBounds = new Bounds( cols[0].bounds.center, cols[0].bounds.size );
+
+        foreach(Collider col in cols)
+        {
+            structureBounds.Encapsulate(col.bounds);
+        }
+
+        // structureBounds describes the entire volume occupied by this structure (or at least the colliders anyway)
+
+        // Now we need to figure out which points of our heightmap array are under these bounds.
+
+        Vector3 terrainBottomLeftCorner = this.transform.position;
+
+        Vector3 structureBottomLeftCorner = structureBounds.min;
+
+        Vector3 structurePositionOffset = structureBottomLeftCorner - terrainBottomLeftCorner;
+
+        // Our terrain is 1024 world units wide -- but how many array units wide is it?
+        // It has a resolution/vertex count of 129 -- but that means it has a 128 edges/squares/whatever
+        // So there would be 8 world units per array index
+        // Imagine that our structure is at relative position 512, then 512 / 8 = array position 64
+        float worldUnitsPerArrayIndexX = terrainData.size.x / (terrainData.heightmapWidth-1);
+        float worldUnitsPerArrayIndexY = terrainData.size.z / (terrainData.heightmapHeight-1);
+
+        int minX = Mathf.FloorToInt( structurePositionOffset.x / worldUnitsPerArrayIndexX );
+        int maxX = Mathf.CeilToInt ( (structurePositionOffset.x + structureBounds.size.x) / worldUnitsPerArrayIndexX ) + 1;
+
+        // World space Z is array Y
+        int minY = Mathf.FloorToInt( structurePositionOffset.z / worldUnitsPerArrayIndexY );
+        int maxY = Mathf.CeilToInt ( (structurePositionOffset.z + structureBounds.size.z) / worldUnitsPerArrayIndexY ) + 1;
+
+        float[,] heights = terrainData.GetHeights(0, 0, terrainData.heightmapWidth, terrainData.heightmapHeight);
+
+        // Express our height as a value from 0..1
+        float correctHeight = (structureGO.transform.position.y - this.transform.position.y) / terrainData.size.y;
+
+        for (int x = minX; x < maxX; x++)
+        {
+            for (int y = minY; y < maxY; y++)
+            {
+                // TODO: Consider doing a raycast here to see if this spot is ACTUALLY under the building.
+                //  Irregular (or highly "diagonal") buildings will currently result in an apparent mis-match
+                // between the terrain and the building shape.
+
+                // Invert x/y
+                heights[y,x] = correctHeight;
+            }
+        }
+
+        terrainData.SetHeights(0, 0, heights);
+
+    }
 }

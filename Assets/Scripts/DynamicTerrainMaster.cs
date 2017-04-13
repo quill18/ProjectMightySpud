@@ -35,10 +35,14 @@ public class StructureColor
 public class DynamicTerrainMaster : MonoBehaviour 
 {
 
-    bool rotTest = true;
+    bool rotTest = false;
     void Start () 
     {
+        System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
+        sw.Start();
         BuildFromLandingSpot( new SphericalCoord( rotTest ? -4 : 0, 0 ) );
+        sw.Stop();
+        Debug.Log("Terrain generation time: " + (sw.ElapsedMilliseconds/1000f));
     }
 
     void Update()
